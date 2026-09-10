@@ -9,11 +9,11 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+async function sendMessageStream({ message, sessionId, history, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, session_id: sessionId, history }),
     signal,
   });
 
@@ -108,5 +108,59 @@ async function apiGetMe() {
     headers: { ...authHeaders() },
   });
   if (!response.ok) return null;
+  return response.json();
+}
+
+// --- Session API ---
+
+async function apiListSessions() {
+  const response = await fetch(`${API_BASE}/api/sessions/`, {
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok) throw new Error("Erro ao listar sessoes.");
+  return response.json();
+}
+
+async function apiCreateSession() {
+  const response = await fetch(`${API_BASE}/api/sessions/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+  });
+  if (!response.ok) throw new Error("Erro ao criar sessao.");
+  return response.json();
+}
+
+async function apiDeleteSession(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok) throw new Error("Erro ao excluir sessao.");
+}
+
+async function apiUpdateSessionTitle(sessionId, title) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/title`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) throw new Error("Erro ao atualizar titulo.");
+  return response.json();
+}
+
+async function apiGenerateSessionTitle(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/generate-title`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+async function apiGetSessionMessages(sessionId) {
+  const response = await fetch(`${API_BASE}/api/chat/history/${sessionId}`, {
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok) throw new Error("Erro ao carregar historico.");
   return response.json();
 }

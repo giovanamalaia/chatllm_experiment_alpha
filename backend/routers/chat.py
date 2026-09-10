@@ -22,6 +22,20 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@router.get("/api/chat/history/{session_id}")
+def get_chat_history(session_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_key == str(session_id))
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    return [
+        {"id": msg.id, "role": msg.role, "content": msg.content, "created_at": msg.created_at.isoformat() if msg.created_at else None}
+        for msg in messages
+    ]
+
+
 @router.post("/api/chat", response_model=ChatResponse)
 async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     try:
@@ -36,9 +50,10 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
+    session_key = str(payload.session_id) if payload.session_id else "default"
 
-    db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
-    db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
+    db.add(ChatMessage(session_key=session_key, role="user", content=payload.message, model=resolved_model))
+    db.add(ChatMessage(session_key=session_key, role="assistant", content=reply, model=resolved_model))
     db.commit()
 
     return ChatResponse(reply=reply, model=resolved_model)
@@ -47,6 +62,7 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
 @router.post("/api/chat/stream")
 async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
     resolved_model = payload.model or OPENROUTER_MODEL_DEFAULT
+    session_key = str(payload.session_id) if payload.session_id else "default"
 
     async def event_generator():
         full_reply = ""
@@ -68,7 +84,7 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
         if full_reply.strip():
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="user",
                     content=payload.message,
                     model=resolved_model,
@@ -76,7 +92,7 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             )
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="assistant",
                     content=full_reply,
                     model=resolved_model,

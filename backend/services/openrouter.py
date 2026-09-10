@@ -114,3 +114,54 @@ async def stream_reply(*, user_message: str, history: list[dict], model: str | N
                         yield delta
         except httpx.HTTPError as exc:
             raise RuntimeError(f"Falha de conexao com OpenRouter: {exc}") from exc
+
+
+async def generate_title(*, conversation_context: str) -> str:
+    """Gera um titulo curto para a conversa com base no contexto completo do dialogo."""
+    if not OPENROUTER_API_KEY:
+        first_line = conversation_context.split("\n")[0] if conversation_context else "Conversa"
+        first_line = first_line.replace("Usuario: ", "").replace("Assistente: ", "")
+        return first_line[:60] + ("..." if len(first_line) > 60 else "")
+
+    system_prompt = (
+        "You are a title generator. Given a conversation, generate a very short title (maximum 8 words) "
+        "in the same language as the conversation that summarizes the main topic. "
+        "The title should be specific enough to distinguish different conversations. "
+        "For example: 'Aprendendo React do zero', 'Viagem para Sao Paulo', 'Erro no código Python'. "
+        "Respond with ONLY the title, no quotes, no punctuation at the end, no extra text."
+    )
+
+    payload = {
+        "model": OPENROUTER_MODEL_DEFAULT,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Generate a short title for this conversation:\n\n{conversation_context}"},
+        ],
+        "max_tokens": 30,
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.post(OPENROUTER_API_URL, json=payload, headers=_build_headers())
+        except httpx.HTTPError:
+            first_line = conversation_context.split("\n")[0] if conversation_context else "Conversa"
+            first_line = first_line.replace("Usuario: ", "").replace("Assistente: ", "")
+            return first_line[:60] + ("..." if len(first_line) > 60 else "")
+
+    if response.status_code >= 400:
+        first_line = conversation_context.split("\n")[0] if conversation_context else "Conversa"
+        first_line = first_line.replace("Usuario: ", "").replace("Assistente: ", "")
+        return first_line[:60] + ("..." if len(first_line) > 60 else "")
+
+    try:
+        data = response.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        if content:
+            clean = content.strip("\"'").strip()
+            return clean[:80]
+    except (KeyError, IndexError, json.JSONDecodeError):
+        pass
+
+    first_line = conversation_context.split("\n")[0] if conversation_context else "Conversa"
+    first_line = first_line.replace("Usuario: ", "").replace("Assistente: ", "")
+    return first_line[:60] + ("..." if len(first_line) > 60 else "")
