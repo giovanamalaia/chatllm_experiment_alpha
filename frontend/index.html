@@ -64,7 +64,9 @@
         flex-shrink: 0;
         padding: 12px 24px;
         border-bottom: 1px solid var(--border);
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .brand {
@@ -72,6 +74,112 @@
         font-size: 0.95rem;
         color: var(--text);
         letter-spacing: 0;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .user-email {
+        font-size: 0.84rem;
+        color: var(--muted);
+      }
+
+      .logout-btn {
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 4px 12px;
+        font-size: 0.84rem;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .logout-btn:hover {
+        background: var(--user-bubble);
+      }
+
+      .auth-screen {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .auth-card {
+        width: 100%;
+        max-width: 380px;
+        padding: 32px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--bg-page);
+      }
+
+      .auth-card h2 {
+        margin: 0 0 20px;
+        font-size: 1.25rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .auth-card form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .auth-card input {
+        padding: 10px 14px;
+        border: 1px solid var(--composer-border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        outline: none;
+        background: var(--bg-page);
+        color: var(--text);
+      }
+
+      .auth-card input:focus {
+        border-color: var(--accent);
+      }
+
+      .auth-card button {
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .auth-card button:hover {
+        background: var(--accent-hover);
+      }
+
+      .auth-card button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .auth-toggle {
+        margin: 16px 0 0;
+        text-align: center;
+        font-size: 0.84rem;
+        color: var(--muted);
+      }
+
+      .auth-toggle a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .auth-toggle a:hover {
+        text-decoration: underline;
       }
 
       .messages {

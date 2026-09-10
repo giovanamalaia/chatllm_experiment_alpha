@@ -56,7 +56,10 @@ async def generate_reply(*, user_message: str, history: list[dict], model: str |
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(OPENROUTER_API_URL, json=payload, headers=_build_headers())
+        try:
+            response = await client.post(OPENROUTER_API_URL, json=payload, headers=_build_headers())
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"Falha de conexao com OpenRouter: {exc}") from exc
 
     if response.status_code >= 400:
         raise RuntimeError(f"OpenRouter retornou erro {response.status_code}: {response.text}")
@@ -85,26 +88,29 @@ async def stream_reply(*, user_message: str, history: list[dict], model: str | N
     }
 
     async with httpx.AsyncClient(timeout=90.0) as client:
-        async with client.stream("POST", OPENROUTER_API_URL, json=payload, headers=_build_headers()) as response:
-            if response.status_code >= 400:
-                body = await response.aread()
-                raise RuntimeError(
-                    f"OpenRouter retornou erro {response.status_code}: {body.decode(errors='replace')}"
-                )
+        try:
+            async with client.stream("POST", OPENROUTER_API_URL, json=payload, headers=_build_headers()) as response:
+                if response.status_code >= 400:
+                    body = await response.aread()
+                    raise RuntimeError(
+                        f"OpenRouter retornou erro {response.status_code}: {body.decode(errors='replace')}"
+                    )
 
-            async for line in response.aiter_lines():
-                if not line or not line.startswith("data:"):
-                    continue
+                async for line in response.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
 
-                data = line[len("data:") :].strip()
-                if data == "[DONE]":
-                    break
+                    data = line[len("data:") :].strip()
+                    if data == "[DONE]":
+                        break
 
-                try:
-                    parsed = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
+                    try:
+                        parsed = json.loads(data)
+                    except json.JSONDecodeError:
+                        continue
 
-                delta = parsed.get("choices", [{}])[0].get("delta", {}).get("content")
-                if isinstance(delta, str) and delta:
-                    yield delta
+                    delta = parsed.get("choices", [{}])[0].get("delta", {}).get("content")
+                    if isinstance(delta, str) and delta:
+                        yield delta
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"Falha de conexao com OpenRouter: {exc}") from exc

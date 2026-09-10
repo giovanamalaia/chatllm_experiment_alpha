@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -31,12 +32,11 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
         )
     except OpenRouterConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except RuntimeError as exc:
+    except (RuntimeError, httpx.HTTPError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
 
-    # Persistimos apenas o fluxo basico de mensagens; sessoes e titulos sao tarefa do participante.
     db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
     db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
     db.commit()
@@ -61,7 +61,7 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
         except OpenRouterConfigError as exc:
             yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=True)}\n\n"
             return
-        except RuntimeError as exc:
+        except (RuntimeError, httpx.HTTPError) as exc:
             yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=True)}\n\n"
             return
 

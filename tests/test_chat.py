@@ -27,7 +27,8 @@ class TestChatEndpoint:
             json={"message": "Ola"},
         )
         # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error)
-        assert response.status_code in (200, 422, 503)
+        # ou 502 se a chave existe mas a chamada real falha
+        assert response.status_code in (200, 422, 502, 503), f"Status inesperado: {response.status_code} - {response.text[:200]}"
 
     def test_chat_empty_message_rejected(self, client: TestClient):
         """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic)."""
@@ -46,7 +47,7 @@ class TestChatStreamEndpoint:
             json={"message": "Ola"},
         )
         # Streaming pode iniciar e depois falhar sem API key
-        assert response.status_code in (200, 422, 503)
+        assert response.status_code in (200, 422, 502, 503), f"Status inesperado: {response.status_code}"
 
     def test_chat_stream_empty_message_rejected(self, client: TestClient):
         """Stream com mensagem vazia deve ser rejeitado com 422."""

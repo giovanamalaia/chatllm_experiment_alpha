@@ -1,12 +1,25 @@
 const API_BASE = window.location.origin;
 
+function getToken() {
+  return localStorage.getItem("access_token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function sendMessageStream({ message, history, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ message, history }),
     signal,
   });
+
+  if (response.status === 401) {
+    throw new Error("Sessao expirada. Faca login novamente.");
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -55,4 +68,45 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       }
     }
   }
+}
+
+async function apiRegister(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Erro ao cadastrar.");
+  return data;
+}
+
+async function apiLogin(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Erro ao fazer login.");
+  return data;
+}
+
+async function apiLogout() {
+  const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Erro ao fazer logout.");
+  }
+}
+
+async function apiGetMe() {
+  const response = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok) return null;
+  return response.json();
 }
